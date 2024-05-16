@@ -16,7 +16,10 @@ import Visualizer from "./Visualizer";
 
 const App: () => JSX.Element = () => {
   const [caption, setCaption] = useState<string | undefined>(
-    "Powered by Deepgram"
+    "Waiting for speaker 1..."
+  );
+  const [caption2, setCaption2] = useState<string | undefined>(
+    "Waiting for speaker 2..."
   );
   const { connection, connectToDeepgram, connectionState } = useDeepgram();
   const { setupMicrophone, microphone, startMicrophone, microphoneState } =
@@ -33,10 +36,12 @@ const App: () => JSX.Element = () => {
     if (microphoneState === MicrophoneState.Ready) {
       connectToDeepgram({
         model: "nova-2",
+        language: "fr-FR",
         interim_results: true,
         smart_format: true,
         filler_words: true,
         utterance_end_ms: 3000,
+        multichannel: true,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,20 +57,34 @@ const App: () => JSX.Element = () => {
 
     const onTranscript = (data: LiveTranscriptionEvent) => {
       const { is_final: isFinal, speech_final: speechFinal } = data;
+
+      let idx = data.channel_index[0];
       let thisCaption = data.channel.alternatives[0].transcript;
 
-      console.log("thisCaption", thisCaption);
-      if (thisCaption !== "") {
-        console.log('thisCaption !== ""', thisCaption);
-        setCaption(thisCaption);
+      if (thisCaption === "") {
+        return;
+      }
+
+      console.log("User " + idx + ": " + thisCaption);
+
+      if (idx === 0) {
+        setCaption("User 1: " + thisCaption);
+      }
+      if (idx === 1) {
+        setCaption2("User 2: " + thisCaption);
       }
 
       if (isFinal && speechFinal) {
         clearTimeout(captionTimeout.current);
         captionTimeout.current = setTimeout(() => {
-          setCaption(undefined);
+          if (idx === 0) {
+            setCaption(undefined);
+          }
+          if (idx === 1) {
+            setCaption2(undefined);
+          }
           clearTimeout(captionTimeout.current);
-        }, 3000);
+        }, 5000);
       }
     };
 
@@ -112,11 +131,15 @@ const App: () => JSX.Element = () => {
       <div className="flex h-full antialiased">
         <div className="flex flex-row h-full w-full overflow-x-hidden">
           <div className="flex flex-col flex-auto h-full">
-            {/* height 100% minus 8rem */}
             <div className="relative w-full h-full">
               {microphone && <Visualizer microphone={microphone} />}
-              <div className="absolute bottom-[8rem]  inset-x-0 max-w-4xl mx-auto text-center">
+              <div className="absolute bottom-[16rem]  inset-x-0 max-w-4xl mx-auto text-center">
                 {caption && <span className="bg-black/70 p-8">{caption}</span>}
+              </div>
+              <div className="absolute bottom-[8rem] inset-x-0 max-w-4xl mx-auto text-center">
+                {caption2 && (
+                  <span className="bg-black/70 p-8">{caption2}</span>
+                )}
               </div>
             </div>
           </div>
